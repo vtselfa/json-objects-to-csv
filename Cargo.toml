@@ -1,0 +1,19 @@
+[package]
+name = "serde-json2csv"
+version = "0.1.0"
+edition = "2021"
+authors = ["Vicent Selfa <vtselfa@gmail.com>"]
+description = "Tiny Rust library for flattening JSON objects and converting them into CSV rows"
+repository = "https://github.com/vtselfa/serde-json2csv"
+license = "MIT"
+readme = "README.md"
+keywords = ["json", "csv", "convert", "transform", "flatten", "flattening", "object", "serde"]
+categories = ["encoding"]
+
+[dependencies]
+csv = "1.1.6"
+flatten-json-object = "0.3.0"
+serde_json = "1.0.79"
+tempfile = "3.0.8"
+thiserror = "1.0.30"
+
