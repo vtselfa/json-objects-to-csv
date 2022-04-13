@@ -18,6 +18,12 @@ pub fn json_objects_array_to_csv(
 ) -> Result<(), error::Error> {
     // We have to flatten the JSON object sine there is no other way to convert nested objects to CSV
     let mut flat_maps = Vec::<serde_json::value::Map<String, Value>>::new();
+
+    // We use the unit separator character (a control character) to be able to detect collisions
+    // like the one that happens when converting `[{"a": {"b": 1}} {"a.b": 2}]` with a `.` separator.
+    let key_separator_orig = flattener.key_separator();
+    let key_separator_repl = "␟";
+    let flattener = flattener.clone().set_key_separator(key_separator_repl);
     for obj in objects {
         let obj = flattener.flatten(obj)?;
         if let Value::Object(map) = obj {
@@ -42,9 +48,18 @@ pub fn json_objects_array_to_csv(
     if headers.is_empty() {
         return Ok(());
     }
-    let headers: Vec<_> = headers.into_iter().collect();
 
-    csv_writer.write_record(&headers)?;
+    // Check that there are no collisions between flattened keys in different objects
+    let headers_row: BTreeSet<String> = headers
+        .clone()
+        .into_iter()
+        .map(|x| x.replace(key_separator_repl, key_separator_orig))
+        .collect();
+    if headers.len() != headers_row.len() {
+        return Err(Error::FlattenedKeysCollision);
+    }
+
+    csv_writer.write_record(headers_row)?;
     for map in flat_maps {
         csv_writer.write_record(build_record(&headers, map))?;
     }
@@ -52,7 +67,10 @@ pub fn json_objects_array_to_csv(
     Ok(())
 }
 
-fn build_record(headers: &[String], mut map: serde_json::Map<String, Value>) -> Vec<String> {
+fn build_record(
+    headers: &BTreeSet<String>,
+    mut map: serde_json::Map<String, Value>,
+) -> Vec<String> {
     let mut record: Vec<String> = vec![];
     for header in headers {
         if let Some(val) = map.remove(header) {
@@ -84,6 +102,12 @@ pub fn json_objects_from_file_to_csv(
     // resulting in the same headers.
     let mut tmp_file = tempfile()?;
 
+    // We use the unit separator character (a control character) to be able to detect collisions
+    // like the one that happens when converting `[{"a": {"b": 1}} {"a.b": 2}]` with a `.` separator.
+    let key_separator_orig = flattener.key_separator();
+    let key_separator_repl = "␟";
+    let flattener = flattener.clone().set_key_separator(key_separator_repl);
+
     // The headers are the union of the keys of the flattened objects, sorted
     let mut headers = BTreeSet::<String>::new();
 
@@ -108,9 +132,18 @@ pub fn json_objects_from_file_to_csv(
     if headers.is_empty() {
         return Ok(());
     }
-    let headers: Vec<_> = headers.into_iter().collect();
 
-    csv_writer.write_record(&headers)?;
+    // Check that there are no collisions between flattened keys in different objects
+    let headers_row: BTreeSet<String> = headers
+        .clone()
+        .into_iter()
+        .map(|x| x.replace(key_separator_repl, key_separator_orig))
+        .collect();
+    if headers.len() != headers_row.len() {
+        return Err(Error::FlattenedKeysCollision);
+    }
+
+    csv_writer.write_record(headers_row)?;
     for obj in Deserializer::from_reader(tmp_file).into_iter::<Value>() {
         let map = match obj? {
             Value::Object(map) => map,
@@ -227,10 +260,7 @@ mod tests {
             .set_preserve_empty_objects(false);
         for err in execute_expect_err(input, &flattener) {
             assert!(
-                matches!(
-                    err,
-                    Error::Flattening(flatten_json_object::Error::KeyWillBeOverwritten(_))
-                ),
+                matches!(err, Error::FlattenedKeysCollision),
                 "Unexpected error"
             );
         }
