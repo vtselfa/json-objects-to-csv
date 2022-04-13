@@ -175,7 +175,7 @@ mod tests {
             .from_writer(&mut output_from_file);
 
         let result_from_file =
-            json_objects_from_file_to_csv(input.as_bytes(), &flattener, csv_writer_from_file);
+            json_objects_from_file_to_csv(input.as_bytes(), flattener, csv_writer_from_file);
 
         let input_from_array: Result<Vec<_>, _> =
             Deserializer::from_str(input).into_iter::<Value>().collect();
@@ -186,7 +186,7 @@ mod tests {
             .delimiter(b',')
             .from_writer(&mut output_from_array);
         let result_from_array =
-            json_objects_array_to_csv(&input_from_array, &flattener, csv_writer_from_array);
+            json_objects_array_to_csv(&input_from_array, flattener, csv_writer_from_array);
 
         // We expect both to produce the same error
         let error_from_file = result_from_file.err().unwrap();
@@ -201,7 +201,7 @@ mod tests {
             .delimiter(b',')
             .from_writer(&mut output_from_file);
 
-        json_objects_from_file_to_csv(input.as_bytes(), &flattener, csv_writer_from_file).unwrap();
+        json_objects_from_file_to_csv(input.as_bytes(), flattener, csv_writer_from_file).unwrap();
 
         let input_from_array: Result<Vec<_>, _> =
             Deserializer::from_str(input).into_iter::<Value>().collect();
@@ -211,7 +211,7 @@ mod tests {
         let csv_writer_from_array = csv::WriterBuilder::new()
             .delimiter(b',')
             .from_writer(&mut output_from_array);
-        json_objects_array_to_csv(&input_from_array, &flattener, csv_writer_from_array).unwrap();
+        json_objects_array_to_csv(&input_from_array, flattener, csv_writer_from_array).unwrap();
 
         let output_from_file = str::from_utf8(&output_from_file).unwrap();
         let output_from_array = str::from_utf8(&output_from_array).unwrap();
