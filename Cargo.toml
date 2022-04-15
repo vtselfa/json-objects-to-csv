@@ -3,11 +3,11 @@ name = "json-objects-to-csv"
 version = "0.1.0"
 edition = "2021"
 authors = ["Vicent Selfa <vtselfa@gmail.com>"]
-description = "Robust Rust library for flattening JSON objects and converting them into CSV rows"
+description = "Robust Rust library for converting JSON objects into CSV rows"
 repository = "https://github.com/vtselfa/json-objects-to-csv"
 license = "MIT"
 readme = "README.md"
-keywords = ["json", "csv", "convert", "transform", "flatten", "flattening", "object", "serde"]
+keywords = ["json", "csv", "convert", "flatten", "serde"]
 categories = ["encoding"]
 
 [dependencies]
