@@ -3,7 +3,7 @@ use thiserror::Error;
 /// Errors that can happen while using this crate.
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("Flattening the JSON failed")]
+    #[error("Flattening the JSON failed: {0}")]
     Flattening(#[from] flatten_json_object::error::Error),
 
     #[error(
@@ -11,12 +11,12 @@ pub enum Error {
     )]
     FlattenedKeysCollision,
 
-    #[error("Writting a CSV record failed")]
+    #[error("Writting a CSV record failed: {0}")]
     WrittingCSV(#[from] csv::Error),
 
-    #[error("Parsing JSON failed")]
+    #[error("Parsing JSON failed: {0}")]
     ParsingJson(#[from] serde_json::Error),
 
-    #[error("Input/output error")]
+    #[error("Input/output error: {0}")]
     InputOutput(#[from] std::io::Error),
 }
