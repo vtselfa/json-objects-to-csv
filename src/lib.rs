@@ -213,7 +213,7 @@ impl Json2Csv {
                         key.replace(e, oe).replace(s, os)
                     }
                     ArrayFormatting::Plain => {
-                        panic!(
+                        unreachable!(
                             "We cloned the original flattener so both should have the same \
                             array formatting enum variant"
                         )

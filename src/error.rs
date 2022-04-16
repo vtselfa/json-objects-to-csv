@@ -4,7 +4,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Flattening the JSON failed: {0}")]
-    Flattening(#[from] flatten_json_object::error::Error),
+    Flattening(#[from] flatten_json_object::Error),
 
     #[error(
         "Two objects have keys that should be different but end looking the same after flattening"
