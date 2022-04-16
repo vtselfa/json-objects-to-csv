@@ -1,6 +1,6 @@
 [package]
 name = "json-objects-to-csv"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Vicent Selfa <vtselfa@gmail.com>"]
 description = "Robust Rust library for converting JSON objects into CSV rows"
