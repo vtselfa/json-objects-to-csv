@@ -1,6 +1,7 @@
 [![licence](https://img.shields.io/crates/l/json-objects-to-csv?style=flat-square)](https://github.com/vtselfa/json-objects-to-csv/blob/master/LICENSE.md)
 [![crates.io](https://img.shields.io/crates/v/json-objects-to-csv?style=flat-square)](https://crates.io/crates/json-objects-to-csv)
 [![docs.rs](https://img.shields.io/docsrs/json-objects-to-csv?style=flat-square)](https://docs.rs/json-objects-to-csv/latest/flatten_json_object/)
+[![ci](https://img.shields.io/github/workflow/status/vtselfa/json-objects-to-csv/ci/master?style=flat-square)](https://github.com/vtselfa/json-objects-to-csv/actions/workflows/ci.yml?query=branch%3Amaster)
 
 <!-- cargo-rdme start -->
 
