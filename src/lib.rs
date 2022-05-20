@@ -152,6 +152,7 @@ use serde_json::{Deserializer, Value};
 use std::collections::BTreeSet;
 use std::io::Seek;
 use std::io::SeekFrom;
+use std::io::{BufReader, BufWriter};
 use std::io::{Read, Write};
 use tempfile::tempfile;
 
@@ -303,7 +304,7 @@ impl Json2Csv {
         // We have to flatten the JSON objects into a file because it can potentially be a really big
         // stream. We cannot directly convert into CSV because we cannot be sure about all the objects
         // resulting in the same headers.
-        let mut tmp_file = tempfile()?;
+        let mut tmp_file = BufWriter::new(tempfile()?);
 
         // The headers are the union of the keys of the flattened objects, sorted
         let mut headers = BTreeSet::<String>::new();
@@ -323,7 +324,6 @@ impl Json2Csv {
             }
             serde_json::to_writer(&mut tmp_file, &obj)?;
         }
-        tmp_file.seek(SeekFrom::Start(0))?;
 
         // If we could not extract headers there is nothing to write to the CSV file
         if headers.is_empty() {
@@ -339,6 +339,9 @@ impl Json2Csv {
         if headers.len() != headers_row.len() {
             return Err(Error::FlattenedKeysCollision);
         }
+
+        tmp_file.seek(SeekFrom::Start(0))?;
+        let tmp_file = BufReader::new(tmp_file.into_inner()?);
 
         csv_writer.write_record(headers_row)?;
         for obj in Deserializer::from_reader(tmp_file).into_iter::<Value>() {

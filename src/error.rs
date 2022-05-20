@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::BufWriter;
 use thiserror::Error;
 
 /// Errors that can happen while using this crate.
@@ -19,4 +21,7 @@ pub enum Error {
 
     #[error("Input/output error: {0}")]
     InputOutput(#[from] std::io::Error),
+
+    #[error("Could not extract the inner file from a BufWriter: {0}")]
+    IntoFile(#[from] std::io::IntoInnerError<BufWriter<File>>),
 }
