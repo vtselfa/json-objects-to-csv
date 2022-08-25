@@ -268,7 +268,7 @@ impl Json2Csv {
         }
 
         // Check that there are no collisions between flattened keys in different objects
-        let headers_row: BTreeSet<String> = headers
+        let headers_row: Vec<String> = headers
             .clone()
             .into_iter()
             .map(|x| self.transform_key(&x))
@@ -331,7 +331,7 @@ impl Json2Csv {
         }
 
         // Check that there are no collisions between flattened keys in different objects
-        let headers_row: BTreeSet<String> = headers
+        let headers_row: Vec<String> = headers
             .clone()
             .into_iter()
             .map(|x| self.transform_key(&x))
