@@ -149,6 +149,7 @@
 
 use flatten_json_object::ArrayFormatting;
 use serde_json::{Deserializer, Value};
+use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::io::Seek;
 use std::io::SeekFrom;
@@ -239,27 +240,34 @@ impl Json2Csv {
         objects: &[Value],
         mut csv_writer: csv::Writer<impl Write>,
     ) -> Result<(), error::Error> {
-        // We have to flatten the JSON object sine there is no other way to convert nested objects to CSV
-        let mut flat_maps = Vec::<serde_json::value::Map<String, Value>>::new();
+        // We have to flatten the JSON object since there is no other way to convert nested objects to CSV
+        let mut orig_flat_maps = Vec::<serde_json::value::Map<String, Value>>::new();
 
         for obj in objects {
             let obj = self.flattener.flatten(obj)?;
             if let Value::Object(map) = obj {
-                flat_maps.push(map);
+                orig_flat_maps.push(map);
             } else {
                 unreachable!("Flattening a JSON object always produces a JSON object");
             }
         }
-        let flat_maps = flat_maps;
+        let orig_flat_maps = orig_flat_maps;
 
-        // The headers are the union of the keys of the flattened objects, sorted
+        let mut flat_maps = Vec::<serde_json::value::Map<String, Value>>::new();
+
+        // The headers are the union of the keys of the flattened objects, sorted.
+        // We collect the headers with our magic separators, and the headers with the separators that the user requested.
+        let mut orig_headers = BTreeSet::<String>::new();
         let mut headers = BTreeSet::<String>::new();
-        for map in &flat_maps {
-            for key in map.keys() {
-                if !headers.contains(key) {
-                    headers.insert(key.to_string());
-                }
+        for orig_map in orig_flat_maps {
+            let mut map = serde_json::value::Map::new();
+            for (orig_key, value) in orig_map {
+                let key = self.transform_key(&orig_key);
+                map.insert(key.clone(), value);
+                orig_headers.insert(orig_key);
+                headers.insert(key);
             }
+            flat_maps.push(map);
         }
 
         // If we could not extract headers there is nothing to write to the CSV file
@@ -268,16 +276,11 @@ impl Json2Csv {
         }
 
         // Check that there are no collisions between flattened keys in different objects
-        let headers_row: BTreeSet<String> = headers
-            .clone()
-            .into_iter()
-            .map(|x| self.transform_key(&x))
-            .collect();
-        if headers.len() != headers_row.len() {
+        if headers.len() != orig_headers.len() {
             return Err(Error::FlattenedKeysCollision);
         }
 
-        csv_writer.write_record(headers_row)?;
+        csv_writer.write_record(&headers)?;
         for map in flat_maps {
             csv_writer.write_record(build_record(&headers, map))?;
         }
@@ -306,23 +309,28 @@ impl Json2Csv {
         // resulting in the same headers.
         let mut tmp_file = BufWriter::new(tempfile()?);
 
-        // The headers are the union of the keys of the flattened objects, sorted
+        // The headers are the union of the keys of the flattened objects, sorted.
+        // We collect the headers with our magic separators, and the headers with the separators that the user requested.
+        let mut orig_headers = BTreeSet::<String>::new();
         let mut headers = BTreeSet::<String>::new();
 
         for obj in Deserializer::from_reader(reader).into_iter::<Value>() {
             let obj = obj?; // Ensure that we can parse the input properly
             let obj = self.flattener.flatten(&obj)?;
 
-            let map = match obj {
-                Value::Object(ref map) => map,
+            let orig_map = match obj {
+                Value::Object(map) => map,
                 _ => unreachable!("Flattening a JSON object always produces a JSON object"),
             };
-            for key in map.keys() {
-                if !headers.contains(key) {
-                    headers.insert(key.to_string());
-                }
+
+            let mut map = BTreeMap::new();
+            for (orig_key, value) in orig_map {
+                let key = self.transform_key(&orig_key);
+                map.insert(key.clone(), value);
+                orig_headers.insert(orig_key);
+                headers.insert(key);
             }
-            serde_json::to_writer(&mut tmp_file, &obj)?;
+            serde_json::to_writer(&mut tmp_file, &map)?;
         }
 
         // If we could not extract headers there is nothing to write to the CSV file
@@ -331,19 +339,14 @@ impl Json2Csv {
         }
 
         // Check that there are no collisions between flattened keys in different objects
-        let headers_row: BTreeSet<String> = headers
-            .clone()
-            .into_iter()
-            .map(|x| self.transform_key(&x))
-            .collect();
-        if headers.len() != headers_row.len() {
+        if headers.len() != orig_headers.len() {
             return Err(Error::FlattenedKeysCollision);
         }
 
         tmp_file.seek(SeekFrom::Start(0))?;
         let tmp_file = BufReader::new(tmp_file.into_inner()?);
 
-        csv_writer.write_record(headers_row)?;
+        csv_writer.write_record(&headers)?;
         for obj in Deserializer::from_reader(tmp_file).into_iter::<Value>() {
             let map = match obj? {
                 Value::Object(map) => map,
@@ -473,6 +476,23 @@ mod tests {
             .set_preserve_empty_arrays(preserve_empty_arrays)
             .set_preserve_empty_objects(preserve_empty_objects);
         let result = execute(input, &flattener);
+        assert_eq!(result.output, expected.join("\n") + "\n");
+    }
+
+    /// We use internal separators that later are replaced by the user provided ones.
+    /// This checks that the replacement does not make the headers and the data be in a different order.
+    #[test]
+    fn no_reordering_on_non_default_separators() {
+        let flattener = Flattener::new()
+            .set_key_separator("]")
+            .set_array_formatting(ArrayFormatting::Surrounded {
+                start: ".".to_string(),
+                end: "".to_string(),
+            })
+            .set_preserve_empty_arrays(true)
+            .set_preserve_empty_objects(true);
+        let result = execute(r#"{"a": [1,2,3]} {"a": {"b": 2}}"#, &flattener);
+        let expected = &["a.0,a.1,a.2,a]b", "1,2,3,", ",,,2"];
         assert_eq!(result.output, expected.join("\n") + "\n");
     }
 
