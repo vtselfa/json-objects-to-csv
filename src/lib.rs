@@ -479,6 +479,21 @@ mod tests {
         assert_eq!(result.output, expected.join("\n") + "\n");
     }
 
+    #[test]
+    fn duplicated_keys_last_wins() {
+        let flattener = Flattener::new()
+            .set_key_separator(".")
+            .set_array_formatting(ArrayFormatting::Plain)
+            .set_preserve_empty_arrays(true)
+            .set_preserve_empty_objects(true);
+        let result = execute(
+            r#"{"a": [1,2,3], "a": {"b": 2}, "c": 1, "c": 2}"#,
+            &flattener,
+        );
+        let expected = &["a.b,c", "2,2"];
+        assert_eq!(result.output, expected.join("\n") + "\n");
+    }
+
     /// We use internal separators that later are replaced by the user provided ones.
     /// This checks that the replacement does not make the headers and the data be in a different order.
     #[test]
